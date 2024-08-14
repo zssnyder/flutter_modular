@@ -67,12 +67,13 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
   Future<void> setNewRoutePath(ModularBook configuration) async {
     final disposableRoutes = <ParallelRoute>[];
 
-    for (final route
-        in currentConfiguration?.routes ?? <ParallelRoute<dynamic>>[]) {
-      if (configuration.routes
-              .indexWhere((element) => element.uri.path == route.uri.path) ==
-          -1) {
-        disposableRoutes.add(route);
+    if (currentConfiguration != null) {
+      for (final currentRoute in currentConfiguration!.routes) {
+        if (configuration.routes
+                .indexWhere((r) => r.uri.path == currentRoute.uri.path) ==
+            -1) {
+          disposableRoutes.add(currentRoute);
+        }
       }
     }
 
@@ -81,6 +82,40 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
 
     for (final disposableRoute in disposableRoutes) {
       reportPop.call(disposableRoute);
+    }
+  }
+
+  void _mergeModularBooks(ModularBook previous, ModularBook result) {
+    for (final (i, previousRoute) in previous.routes.indexed) {
+      final existingIndex = result.routes.indexWhere(
+        (r) => r.uri.path == previousRoute.uri.path,
+      );
+
+      if (existingIndex < 0) {
+        var existingParentIndex = result.routes.indexWhere((r) {
+          var result = false;
+
+          if (r.children.isNotEmpty) {
+            if (r.uri.path == previousRoute.parent) {
+              result = true;
+            }
+          }
+
+          return result;
+        });
+
+        if (existingParentIndex >= 0) {
+          result.routes.insert(++existingParentIndex, previousRoute);
+
+          for (final nestedRoute in previous.routes.sublist(i)) {
+            if (nestedRoute.parent == previousRoute.uri.path) {
+              result.routes.insert(++existingParentIndex, nestedRoute);
+            } else {
+              break;
+            }
+          }
+        }
+      }
     }
   }
 
@@ -105,6 +140,11 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
     _lastClick = currentTime;
 
     final book = await parser.selectBook(routeName, arguments: arguments);
+
+    if (currentConfiguration != null) {
+      _mergeModularBooks(currentConfiguration!, book);
+    }
+
     return setNewRoutePath(book);
   }
 

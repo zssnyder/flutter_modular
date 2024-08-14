@@ -17,7 +17,7 @@ class ModularBook {
     for (var i = 0; i < filteredRoutes.length; i++) {
       final route = filteredRoutes[i];
       pages.add(ModularPage(
-        key: ValueKey('${route.uri}@${route.schema}@$i'),
+        key: ValueKey('${route.uri}@${route.schema}@'),
         route: route,
         args: Modular.args,
         flags: (Modular as ModularBase).flags,
