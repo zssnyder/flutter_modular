@@ -162,6 +162,8 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
       currentConfiguration?.routes.removeWhere(
         (element) => element.parent == parallel.uri.toString(),
       );
+
+      parallel.children.forEach(reportPop.call);
     }
 
     if (currentConfiguration?.routes.indexWhere(
