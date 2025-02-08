@@ -10,8 +10,8 @@ void main() {
   final usecase = BindModuleImpl(service);
   final module = ModuleMock();
   test('BindModuleImpl', () {
-    when(() => service.bind(module)).thenReturn(const Success(unit));
+    when(() => service.bind(module, '/')).thenReturn(const Success(unit));
 
-    expect(usecase.call(module).getOrNull(), unit);
+    expect(usecase.call(module, '/').getOrNull(), unit);
   });
 }

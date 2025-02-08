@@ -55,8 +55,7 @@ class UnbindModuleMock extends Mock implements UnbindModule {}
 
 class ReplaceInstanceMock extends Mock implements ReplaceInstance {}
 
-class ModularRouteInformationParserMock extends Mock
-    implements ModularRouteInformationParser {}
+class ModularRouteInformationParserMock extends Mock implements ModularRouteInformationParser {}
 
 class ModularRouterDelegateMock extends Mock implements ModularRouterDelegate {}
 
@@ -122,8 +121,7 @@ void main() {
     when(() => startModule.call(module)).thenReturn(const Success(unit));
     modularBase.init(module);
     verify(() => startModule.call(module));
-    expect(
-        () => modularBase.init(module), throwsA(isA<ModuleStartedException>()));
+    expect(() => modularBase.init(module), throwsA(isA<ModuleStartedException>()));
   });
 
   test('dispose', () {
@@ -138,17 +136,16 @@ void main() {
 
   test('tryGet', () {
     when(() => getBind.call<String>()).thenReturn(const Success('modular'));
-    when(() => getBind.call<int>())
-        .thenReturn(const Failure(BindNotFoundException('')));
+    when(() => getBind.call<int>()).thenReturn(const Failure(BindNotFoundException('')));
     expect(modularBase.tryGet<String>(), 'modular');
     expect(modularBase.tryGet<int>(), isNull);
   });
 
   test('bindModule', () {
     final module = ModuleMock();
-    when(() => bindModule.call(module)).thenReturn(const Success(unit));
-    modularBase.bindModule(module);
-    verify(() => bindModule.call(module)).called(1);
+    when(() => bindModule.call(module, '')).thenReturn(const Success(unit));
+    modularBase.bindModule(module, '');
+    verify(() => bindModule.call(module, '')).called(1);
   });
 
   test('unbindModule', () {
@@ -159,8 +156,7 @@ void main() {
 
   test('replaceInstance', () {
     const instance = 'String';
-    when(() => replaceInstance.call<String>(instance))
-        .thenReturn(const Success(unit));
+    when(() => replaceInstance.call<String>(instance)).thenReturn(const Success(unit));
     modularBase.replaceInstance<String>(instance);
     verify(() => replaceInstance.call<String>(instance)).called(1);
   });

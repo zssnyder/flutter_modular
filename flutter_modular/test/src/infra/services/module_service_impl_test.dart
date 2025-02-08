@@ -34,8 +34,8 @@ void main() {
 
   group('bind', () {
     test('should execute', () {
-      when(() => tracker.bindModule(module));
-      final result = service.bind(module);
+      when(() => tracker.bindModule(module, '/'));
+      final result = service.bind(module, '/');
       expect(result.isSuccess(), true);
       expect(result.getOrNull(), unit);
     });

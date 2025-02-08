@@ -21,8 +21,8 @@ class ModuleServiceImpl extends ModuleService {
   }
 
   @override
-  Result<Unit, ModularError> bind(Module module, [String? tag]) {
-    tracker.bindModule(module, tag);
+  Result<Unit, ModularError> bind(Module module, String routeUri, {String? tag}) {
+    tracker.bindModule(module, routeUri, tag: tag);
     return const Success(unit);
   }
 

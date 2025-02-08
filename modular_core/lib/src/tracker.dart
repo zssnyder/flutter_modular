@@ -39,7 +39,7 @@ abstract class Tracker {
 
   /// Add a Module to Injection System.<br>
   /// Use Tracker.unbindModule to remove registers;
-  void bindModule(Module module, [String? tag]);
+  void bindModule(Module module, String routeUri, {String? tag});
 
   /// Remove registers manually;
   void unbindModule(String moduleName);
@@ -55,7 +55,7 @@ class _Tracker implements Tracker {
   @override
   final AutoInjector injector;
 
-  final _disposeTags = <Type, List<String>>{};
+  final _disposeTags = <String, List<String>>{};
   final _importedInjector = <String, AutoInjector>{};
 
   Module? _nullableModule;
@@ -84,8 +84,8 @@ class _Tracker implements Tracker {
   @override
   void runApp(Module module, [String initialRoutePath = '/']) {
     _nullableModule = module;
-    _disposeTags[module.runtimeType] = [initialRoutePath];
-    bindModule(module);
+
+    bindModule(module, initialRoutePath);
     addRoutes(module);
   }
 
@@ -158,9 +158,9 @@ class _Tracker implements Tracker {
     for (final key in _disposeTags.keys) {
       final moduleTags = _disposeTags[key]!;
 
-      if (moduleTags.isEmpty) {
-        continue;
-      }
+      // if (moduleTags.isEmpty) {
+      //   continue;
+      // }
 
       if (tag != '/') {
         moduleTags.removeWhere((element) => element.startsWith(tag));
@@ -171,13 +171,17 @@ class _Tracker implements Tracker {
       }
 
       if (moduleTags.isEmpty) {
-        unbindModule(key.toString());
+        unbindModule(key);
       }
     }
   }
 
   void _removeRegisters(String tag) {
     injector.disposeInjectorByTag(tag, _disposeInstance);
+
+    if (_importedInjector.containsKey(tag)) {
+      _importedInjector.remove(tag);
+    }
 
     printResolverFunc?.call('-- $tag DISPOSED');
   }
@@ -190,25 +194,22 @@ class _Tracker implements Tracker {
 
   @override
   void reportPushRoute(ModularRoute route) {
+    final routeUri = route.uri.toString();
+
     for (final module in [...route.innerModules.values, module]) {
-      final key = module.runtimeType;
-      if (_disposeTags[key]!.isEmpty) {
-        bindModule(module);
+      final key = module.runtimeType.toString();
+      if (!_disposeTags.containsKey(key) || _disposeTags[key]!.isEmpty) {
+        bindModule(module, routeUri);
         printResolverFunc?.call('-- ${module.runtimeType} INITIALIZED');
+      } else if (_shouldAddToDisposeTags(key, routeUri)) {
+        _disposeTags[key]!.add(routeUri);
       }
-      final routeUri = route.uri.toString();
-      if (_disposeTags[key]!.isNotEmpty && routeUri != '/') {
-        if (_disposeTags[key]!.contains(routeUri)) {
-          continue;
-        }
-      }
-      _disposeTags[key]!.add(routeUri);
     }
   }
 
   @override
-  void bindModule(Module module, [String? tag]) {
-    final newInjector = _createInjector(module, tag);
+  void bindModule(Module module, String routeUri, {String? tag}) {
+    final newInjector = _createInjector(module, routeUri, tag: tag);
 
     injector.uncommit();
     injector.addInjector(newInjector);
@@ -261,11 +262,13 @@ class _Tracker implements Tracker {
     return newUrl.join('/');
   }
 
-  AutoInjector _createExportedInjector(Module importedModule) {
-    final importTag = importedModule.runtimeType.toString();
+  AutoInjector _createExportedInjector(Module importedModule, String routeUri) {
+    final importTag = '${importedModule.runtimeType}_Imported';
     late AutoInjector exportedInject;
+
     if (!_importedInjector.containsKey(importTag)) {
-      exportedInject = _createInjector(importedModule, '${importTag}_Imported');
+      // ignore: lines_longer_than_80_chars
+      exportedInject = _createInjector(importedModule, routeUri, tag: importTag);
       importedModule.exportedBinds(exportedInject);
       _importedInjector[importTag] = exportedInject;
     } else {
@@ -275,15 +278,38 @@ class _Tracker implements Tracker {
     return exportedInject;
   }
 
-  AutoInjector _createInjector(Module module, [String? tag]) {
-    final newInjector = AutoInjector(tag: tag ?? module.runtimeType.toString());
+  AutoInjector _createInjector(Module module, String routeUri, {String? tag}) {
+    final injectorKey = tag ?? module.runtimeType.toString();
+    final newInjector = AutoInjector(tag: injectorKey);
+
     for (final importedModule in module.imports) {
-      final exportedInject = _createExportedInjector(importedModule);
+      final exportedInject = _createExportedInjector(importedModule, routeUri);
       newInjector.addInjector(exportedInject);
     }
 
     module.binds(newInjector);
+
+    if (_shouldAddToDisposeTags(injectorKey, routeUri)) {
+      _disposeTags[injectorKey]!.add(routeUri);
+    }
+
     return newInjector;
+  }
+
+  bool _shouldAddToDisposeTags(String key, String routeUri) {
+    var result = true;
+
+    if (_disposeTags.containsKey(key)) {
+      if (_disposeTags[key]!.isNotEmpty && routeUri != '/') {
+        if (_disposeTags[key]!.contains(routeUri)) {
+          result = false;
+        }
+      }
+    } else {
+      _disposeTags[key] = [];
+    }
+
+    return result;
   }
 
   void addRoutes(Module module) {
@@ -325,8 +351,7 @@ class _Tracker implements Tracker {
       }
 
       if (preview.name.contains('**')) {
-        final c =
-            actual.name.split('/').length > preview.name.split('/').length;
+        final c = actual.name.split('/').length > preview.name.split('/').length;
         if (!actual.name.contains('**') || c) {
           return 1;
         }
@@ -343,7 +368,7 @@ class _Tracker implements Tracker {
     final manager = RouteManager();
     module.routes(manager);
     final routes = manager._routes;
-    _disposeTags[module.runtimeType] = [];
+
     for (var child in routes) {
       child = child.addParent(route);
       child = child.copyWith(

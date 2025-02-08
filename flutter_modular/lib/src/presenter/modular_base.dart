@@ -77,7 +77,7 @@ abstract class IModularBase {
   void setArguments(dynamic arguments);
 
   /// Change the navigatorKey
-  void bindModule(Module module);
+  void bindModule(Module module, String routeUri);
 
   /// remove all module binds by name
   void unbindModule<T extends Module>({String? type});
@@ -132,8 +132,7 @@ class ModularBase implements IModularBase {
   });
 
   @override
-  bool dispose<B extends Object>({String? key}) =>
-      disposeBind<B>(key).getOrElse((left) => false);
+  bool dispose<B extends Object>({String? key}) => disposeBind<B>(key).getOrElse((left) => false);
 
   @override
   B get<B extends Object>({String? key}) {
@@ -168,8 +167,7 @@ class ModularBase implements IModularBase {
   IModularNavigator get to => navigatorDelegate ?? navigator;
 
   @override
-  ModularArguments get args =>
-      getArguments().getOrElse((l) => ModularArguments.empty());
+  ModularArguments get args => getArguments().getOrElse((l) => ModularArguments.empty());
 
   final flags = ModularFlags();
 
@@ -208,8 +206,8 @@ class ModularBase implements IModularBase {
   );
 
   @override
-  void bindModule(Module module) {
-    bindModuleUsecase(module).getOrThrow();
+  void bindModule(Module module, String routeUri) {
+    bindModuleUsecase(module, routeUri).getOrThrow();
   }
 
   @override
