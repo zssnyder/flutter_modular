@@ -23,8 +23,11 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
   final ReportPop reportPop;
   List<NavigatorObserver> observers = [];
 
-  ModularRouterDelegate(
-      {required this.parser, required this.navigatorKey, required this.reportPop});
+  ModularRouterDelegate({
+    required this.parser,
+    required this.navigatorKey,
+    required this.reportPop,
+  });
 
   @override
   ModularBook? currentConfiguration;
@@ -67,7 +70,9 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
 
     if (currentConfiguration != null) {
       for (final currentRoute in currentConfiguration!.routes) {
-        if (configuration.routes.indexWhere((r) => r.uri.path == currentRoute.uri.path) == -1) {
+        if (configuration.routes
+                .indexWhere((r) => r.uri.path == currentRoute.uri.path) ==
+            -1) {
           disposableRoutes.add(currentRoute);
         }
       }
@@ -155,19 +160,23 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
     currentConfiguration?.routes.remove(parallel);
 
     if (parallel.uri.toString() != '/') {
-      currentConfiguration?.routes.removeWhere(
-        (element) => element.parent == parallel.uri.toString(),
-      );
+      final children = currentConfiguration?.routes
+          .where((element) => element.schema == parallel.uri.toString())
+          .toList();
 
-      parallel.children.forEach(reportPop.call);
+      for (final child in (children ?? [])) {
+        currentConfiguration?.routes.remove(child);
+        reportPop.call(child);
+      }
     }
 
-    if (currentConfiguration?.routes
-            .indexWhere((element) => element.uri.toString() == parallel.uri.toString()) ==
+    if (currentConfiguration?.routes.indexWhere(
+            (element) => element.uri.toString() == parallel.uri.toString()) ==
         -1) {
       reportPop.call(parallel);
     }
-    final arguments = parser.getArguments().getOrElse((l) => ModularArguments.empty());
+    final arguments =
+        parser.getArguments().getOrElse((l) => ModularArguments.empty());
     parser.setArguments(arguments.copyWith(uri: currentConfiguration!.uri));
     notifyListeners();
 
@@ -178,18 +187,21 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
   Future<T?> pushNamed<T extends Object?>(String routeName,
       {Object? arguments, bool forRoot = false}) async {
     final popComplete = Completer();
-    var book =
-        await parser.selectBook(routeName, arguments: arguments, popCallback: popComplete.complete);
+    var book = await parser.selectBook(routeName,
+        arguments: arguments, popCallback: popComplete.complete);
     if (forRoot) {
-      book = currentConfiguration!.copyWith(
-          routes: [...currentConfiguration!.routes, book.routes.last.copyWith(schema: '')]);
+      book = currentConfiguration!.copyWith(routes: [
+        ...currentConfiguration!.routes,
+        book.routes.last.copyWith(schema: '')
+      ]);
       await setNewRoutePath(book);
     } else {
       final list = [...currentConfiguration!.routes];
 
       for (final route in book.routes.reversed) {
         if (list
-                .firstWhere((element) => element.uri.toString() == route.uri.toString(),
+                .firstWhere(
+                    (element) => element.uri.toString() == route.uri.toString(),
                     orElse: ParallelRoute.empty)
                 .name ==
             '') {
@@ -208,15 +220,23 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
   }
 
   @override
-  Future<T?> pushReplacementNamed<T extends Object?, TO extends Object?>(String routeName,
-      {TO? result, Object? arguments, bool forRoot = false}) async {
+  Future<T?> pushReplacementNamed<T extends Object?, TO extends Object?>(
+    String routeName, {
+    TO? result,
+    Object? arguments,
+    bool forRoot = false,
+  }) async {
     final popComplete = Completer();
-    var book =
-        await parser.selectBook(routeName, arguments: arguments, popCallback: popComplete.complete);
+    var book = await parser.selectBook(
+      routeName,
+      arguments: arguments,
+      popCallback: popComplete.complete,
+    );
     final currentRoutes = [...currentConfiguration!.routes];
     if (forRoot) {
       //;currentRoutes.removeWhere((element) => element.schema != '');
-      final indexLast = currentRoutes.lastIndexWhere((element) => element.schema == '');
+      final indexLast =
+          currentRoutes.lastIndexWhere((element) => element.schema == '');
       currentRoutes[indexLast] = book.routes.first.copyWith(schema: '');
       book = currentConfiguration!.copyWith(routes: [...currentRoutes]);
       await setNewRoutePath(book);
@@ -225,8 +245,10 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
 
       for (final route in book.routes.reversed) {
         if (list
-                .firstWhere((element) => element.uri.toString() == route.uri.toString(),
-                    orElse: ParallelRoute.empty)
+                .firstWhere(
+                  (element) => element.uri.toString() == route.uri.toString(),
+                  orElse: ParallelRoute.empty,
+                )
                 .name ==
             '') {
           list.add(route);
@@ -239,8 +261,12 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
   }
 
   @override
-  Future<T?> popAndPushNamed<T extends Object?, TO extends Object?>(String routeName,
-      {TO? result, Object? arguments, bool forRoot = false}) {
+  Future<T?> popAndPushNamed<T extends Object?, TO extends Object?>(
+    String routeName, {
+    TO? result,
+    Object? arguments,
+    bool forRoot = false,
+  }) {
     pop(result);
     return pushNamed(routeName, arguments: arguments);
   }
@@ -253,7 +279,8 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
       navigatorKey.currentState?.maybePop(result) ?? Future.value(false);
 
   @override
-  void pop<T extends Object?>([T? result]) => navigatorKey.currentState?.pop(result);
+  void pop<T extends Object?>([T? result]) =>
+      navigatorKey.currentState?.pop(result);
 
   @override
   void popUntil(bool Function(Route) predicate) async {
@@ -275,9 +302,12 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
 
     if (currentConfiguration != null) {
       if (page == null) {
-        book = currentConfiguration!.copyWith(routes: [currentConfiguration!.routes.first]);
+        book = currentConfiguration!.copyWith(
+          routes: [currentConfiguration!.routes.first],
+        );
       } else {
-        final routes = currentConfiguration!.routes.takeWhile((x) => x != page).toList();
+        final routes =
+            currentConfiguration!.routes.takeWhile((x) => x != page).toList();
 
         routes.add(page);
 
@@ -361,7 +391,10 @@ class CustomModalRoute extends ModalRoute {
 
   @override
   Widget buildPage(
-      BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) {
     throw UnimplementedError();
   }
 

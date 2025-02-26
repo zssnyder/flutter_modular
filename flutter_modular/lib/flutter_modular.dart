@@ -95,10 +95,12 @@ class RouterOutletState extends State<RouterOutlet> {
     super.initState();
     _navigatorKey = GlobalKey<NavigatorState>();
 
+    final router = injector.get<ModularRouterDelegate>();
+
     if (widget.initialPath != null) {
       _delegate = RouterOutletDelegate(
         widget.initialPath!,
-        injector.get<ModularRouterDelegate>(),
+        router,
         _navigatorKey,
         currentObservers,
       );
