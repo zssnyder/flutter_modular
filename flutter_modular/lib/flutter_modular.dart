@@ -69,11 +69,9 @@ class RouterOutlet extends StatefulWidget {
   /// An interface for observing the behavior of a [Navigator].
   final List<NavigatorObserver>? observers;
 
-  final String? initialPath;
-
   /// It acts as a Nested Browser that will be populated
   /// by the children of this route.
-  const RouterOutlet({super.key, this.initialPath, this.observers});
+  const RouterOutlet({super.key, this.observers});
 
   @override
   RouterOutletState createState() => RouterOutletState();
@@ -87,24 +85,12 @@ class RouterOutletState extends State<RouterOutlet> {
   ChildBackButtonDispatcher? _backButtonDispatcher;
 
   /// Get all current observers
-  List<NavigatorObserver> get currentObservers =>
-      widget.observers ?? <NavigatorObserver>[];
+  List<NavigatorObserver> get currentObservers => widget.observers ?? <NavigatorObserver>[];
 
   @override
   void initState() {
     super.initState();
     _navigatorKey = GlobalKey<NavigatorState>();
-
-    final router = injector.get<ModularRouterDelegate>();
-
-    if (widget.initialPath != null) {
-      _delegate = RouterOutletDelegate(
-        widget.initialPath!,
-        router,
-        _navigatorKey,
-        currentObservers,
-      );
-    }
 
     Modular.to.addListener(listener);
   }
