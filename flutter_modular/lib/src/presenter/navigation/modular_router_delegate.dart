@@ -93,7 +93,7 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
       );
 
       if (existingIndex < 0) {
-        var existingParentIndex = result.routes.indexWhere((r) {
+        var existingParentIndex = result.routes.lastIndexWhere((r) {
           var result = false;
 
           if (r.children.isNotEmpty) {
@@ -106,9 +106,12 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
         });
 
         if (existingParentIndex >= 0) {
-          result.routes.insert(++existingParentIndex, previousRoute);
+          result.routes.insert(
+            ++existingParentIndex,
+            previousRoute,
+          );
 
-          for (final nestedRoute in previous.routes.sublist(i)) {
+          for (final nestedRoute in previous.routes.sublist(i + 1)) {
             if (nestedRoute.parent == previousRoute.uri.path) {
               result.routes.insert(++existingParentIndex, nestedRoute);
             } else {
