@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/src/domain/usecases/get_arguments.dart';
 
 import '../../../flutter_modular.dart';
 import '../../domain/usecases/report_pop.dart';
+import '../../domain/usecases/set_arguments.dart';
 import 'custom_navigator.dart';
 import 'modular_book.dart';
 import 'modular_page.dart';
@@ -21,12 +23,16 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
 
   final ModularRouteInformationParser parser;
   final ReportPop reportPop;
+  final GetArguments getArguments;
+  final SetArguments setArguments;
   List<NavigatorObserver> observers = [];
 
   ModularRouterDelegate({
     required this.parser,
     required this.navigatorKey,
     required this.reportPop,
+    required this.getArguments,
+    required this.setArguments,
   });
 
   @override
@@ -84,9 +90,17 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
     for (final disposableRoute in disposableRoutes) {
       reportPop.call(disposableRoute);
     }
+
+    final args = getArguments.call().getOrDefault(ModularArguments.empty());
+
+    setArguments.call(
+      args.copyWith(uri: configuration.uri),
+    );
   }
 
-  void _mergeModularBooks(ModularBook previous, ModularBook result) {
+  ModularBook _mergeModularBooks(ModularBook previous, ModularBook next) {
+    final result = next.copyWith(routes: [...next.routes]);
+
     for (final (i, previousRoute) in previous.routes.indexed) {
       final existingIndex = result.routes.indexWhere(
         (r) => r.uri.path == previousRoute.uri.path,
@@ -106,6 +120,22 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
         });
 
         if (existingParentIndex >= 0) {
+          final lastChildIndex = result.routes.lastIndexWhere((r) {
+            var result = false;
+
+            if (r.parent == previousRoute.parent) {
+              if (r.uri.path != next.routes.last.uri.path) {
+                result = true;
+              }
+            }
+
+            return result;
+          });
+
+          if (lastChildIndex >= 0) {
+            existingParentIndex = lastChildIndex;
+          }
+
           result.routes.insert(
             ++existingParentIndex,
             previousRoute,
@@ -121,6 +151,8 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
         }
       }
     }
+
+    return result;
   }
 
   var _lastClick = DateTime.now();
@@ -143,10 +175,10 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
     }
     _lastClick = currentTime;
 
-    final book = await parser.selectBook(routeName, arguments: arguments);
+    var book = await parser.selectBook(routeName, arguments: arguments);
 
     if (currentConfiguration != null) {
-      _mergeModularBooks(currentConfiguration!, book);
+      book = _mergeModularBooks(currentConfiguration!, book);
     }
 
     return setNewRoutePath(book);
@@ -162,15 +194,13 @@ class ModularRouterDelegate extends RouterDelegate<ModularBook>
     parallel.popCallback?.call(result);
     currentConfiguration?.routes.remove(parallel);
 
-    if (parallel.uri.toString() != '/') {
-      final children = currentConfiguration?.routes
-          .where((element) => element.schema == parallel.uri.toString())
-          .toList();
+    final children = currentConfiguration?.routes
+        .where((element) => element.parent == parallel.uri.toString())
+        .toList();
 
-      for (final child in (children ?? [])) {
-        currentConfiguration?.routes.remove(child);
-        reportPop.call(child);
-      }
+    for (final child in (children ?? [])) {
+      currentConfiguration?.routes.remove(child);
+      reportPop.call(child);
     }
 
     if (currentConfiguration?.routes.indexWhere(

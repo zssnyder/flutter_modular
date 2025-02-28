@@ -42,6 +42,8 @@ void main() {
   late NavigatorKeyMock<NavigatorState> key;
   late NavigatorStateMock navigatorState;
   late ReportPopMock reportPopMock;
+  late GetArgumentsMock getArgumentsMock;
+  late SetArgumentsMock setArgumentsMock;
 
   setUpAll(() {
     registerFallbackValue(ModularArguments.empty());
@@ -52,12 +54,16 @@ void main() {
     key = NavigatorKeyMock<NavigatorState>();
     navigatorState = NavigatorStateMock();
     reportPopMock = ReportPopMock();
+    getArgumentsMock = GetArgumentsMock();
+    setArgumentsMock = SetArgumentsMock();
     when(() => key.currentState).thenReturn(navigatorState);
     parser = ModularRouteInformationParserMock();
     delegate = ModularRouterDelegate(
       parser: parser,
       navigatorKey: key,
       reportPop: reportPopMock,
+      getArguments: getArgumentsMock,
+      setArguments: setArgumentsMock,
     );
   });
 
@@ -132,6 +138,73 @@ void main() {
     expect(delegate.path, '/test');
     expect(delegate.navigateHistory, delegate.currentConfiguration!.routes);
   });
+
+  test('navigate with multiple nested routes', () async {
+    final root = ParallelRouteMock();
+    when(() => root.uri).thenReturn(Uri.parse('/'));
+    when(() => root.parent).thenReturn('');
+    when(() => parser.selectBook('/'))
+        .thenAnswer((_) async => ModularBook(routes: [root]));
+
+    final parent1 = ParallelRouteMock();
+    when(() => parent1.uri).thenReturn(Uri.parse('/parent1'));
+    when(() => parent1.parent).thenReturn('/');
+    when(() => parser.selectBook('/parent1'))
+        .thenAnswer((_) async => ModularBook(routes: [root, parent1]));
+
+    final child1 = ParallelRouteMock();
+    when(() => child1.uri).thenReturn(Uri.parse('/parent1/child1'));
+    when(() => child1.parent).thenReturn('/parent1');
+    when(() => parser.selectBook('/parent1/child1'))
+        .thenAnswer((_) async => ModularBook(routes: [root, parent1, child1]));
+
+    final child2 = ParallelRouteMock();
+    when(() => child2.uri).thenReturn(Uri.parse('/parent1/child2'));
+    when(() => child2.parent).thenReturn('/parent1');
+    when(() => parser.selectBook('/parent1/child2'))
+        .thenAnswer((_) async => ModularBook(routes: [root, parent1, child2]));
+
+    final parent2 = ParallelRouteMock();
+    when(() => parent2.uri).thenReturn(Uri.parse('/parent2'));
+    when(() => parent2.parent).thenReturn('/');
+    when(() => parser.selectBook('/parent2'))
+        .thenAnswer((_) async => ModularBook(routes: [root, parent2]));
+
+    final child3 = ParallelRouteMock();
+    when(() => child3.uri).thenReturn(Uri.parse('/parent2/child3'));
+    when(() => child3.parent).thenReturn('/parent2');
+    when(() => parser.selectBook('/parent2/child3'))
+        .thenAnswer((_) async => ModularBook(routes: [root, parent2, child3]));
+
+    when(() => root.children).thenReturn([parent1, parent2]);
+    when(() => parent1.children).thenReturn([child1, child2]);
+    when(() => parent2.children).thenReturn([child3]);
+    when(() => child1.children).thenReturn([]);
+    when(() => child2.children).thenReturn([]);
+    when(() => child3.children).thenReturn([]);
+
+    final getArgsMock = GetArgumentsMock();
+    final setArgsMock = SetArgumentsMock();
+
+    when(() => parser.getArguments).thenReturn(getArgsMock);
+    when(() => parser.setArguments).thenReturn(setArgsMock);
+
+    final arguments = ModularArguments.empty();
+
+    when(getArgsMock.call).thenReturn(Success(arguments));
+    when(() => setArgsMock.call(any())).thenReturn(const Success(unit));
+
+    await delegate.navigate('/parent1/child1');
+    await delegate.navigate('/parent1/child2');
+    await Future.delayed(const Duration(milliseconds: 600));
+    await delegate.navigate('/parent2/child3');
+    await Future.delayed(const Duration(milliseconds: 600));
+    await delegate.navigate('/parent1');
+    expect(delegate.currentConfiguration?.uri.toString(), '/parent1/child2');
+    expect(delegate.path, '/parent1/child2');
+    expect(delegate.navigateHistory, delegate.currentConfiguration!.routes);
+  });
+
   test('onPopPage', () {
     final route = RouteMock();
     final parallel = ParallelRouteMock();
@@ -176,12 +249,15 @@ void main() {
     when(() => childParallel.uri).thenReturn(Uri.parse('/child'));
     when(() => childParallel.parent).thenReturn('/');
     final childPage = ModularPage(
-        route: childParallel, args: ModularArguments.empty(), flags: ModularFlags());
+        route: childParallel,
+        args: ModularArguments.empty(),
+        flags: ModularFlags());
     when(() => childRoute.didPop(null)).thenReturn(true);
     when(() => childRoute.settings).thenReturn(childPage);
     when(() => childRoute.isFirst).thenReturn(false);
 
-    when(() => reportPopMock.call(childParallel)).thenReturn(const Success(unit));
+    when(() => reportPopMock.call(childParallel))
+        .thenReturn(const Success(unit));
 
     final arguments = ModularArguments.empty();
     final getArgsMock = GetArgumentsMock();
@@ -192,11 +268,12 @@ void main() {
     when(getArgsMock.call).thenReturn(Success(arguments));
     when(() => setArgsMock.call(any())).thenReturn(const Success(unit));
 
-    delegate.currentConfiguration = ModularBook(routes: [parallel, childParallel]);
+    delegate.currentConfiguration =
+        ModularBook(routes: [parallel, childParallel]);
     expect(delegate.currentConfiguration?.routes.length, 2);
     delegate.onPopPage(route, null);
-    expect(delegate.currentConfiguration?.routes.length, 0);
     expect(delegate.navigateHistory, delegate.currentConfiguration?.routes);
+    expect(delegate.currentConfiguration?.routes.length, 0);
   });
   test('pushNamed with forRoot', () async {
     final route1 = ParallelRouteMock();
