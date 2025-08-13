@@ -16,9 +16,12 @@ class BindServiceImpl extends BindService {
   }
 
   @override
-  Result<T, ModularError> getBind<T extends Object>([String? key]) {
+  Result<T, ModularError> getBind<T extends Object>({
+    String? key,
+    ParamTransform? transform,
+  }) {
     try {
-      final result = injector.get<T>(key: key);
+      final result = injector.get<T>(key: key, transform: transform);
       return Success(result);
     } on AutoInjectorException catch (e, s) {
       return Failure(BindNotFoundException(e.toString(), s));

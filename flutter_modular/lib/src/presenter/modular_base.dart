@@ -45,12 +45,12 @@ abstract class IModularBase {
   IModularNavigator? navigatorDelegate;
 
   /// Request an instance by [Type]
-  B get<B extends Object>({String? key});
+  B get<B extends Object>({String? key, ParamTransform? transform});
 
   /// Request an instance by [Type]
   /// <br>
   /// Return null if not found instance
-  B? tryGet<B extends Object>({String? key});
+  B? tryGet<B extends Object>({String? key, ParamTransform? transform});
 
   /// Dispose a bind by [Type]
   bool dispose<B extends Object>({String? key});
@@ -135,13 +135,13 @@ class ModularBase implements IModularBase {
   bool dispose<B extends Object>({String? key}) => disposeBind<B>(key).getOrElse((left) => false);
 
   @override
-  B get<B extends Object>({String? key}) {
-    return getBind<B>(key).getOrThrow();
+  B get<B extends Object>({String? key, ParamTransform? transform}) {
+    return getBind<B>(key: key).getOrThrow();
   }
 
   @override
-  B? tryGet<B extends Object>({String? key}) {
-    return getBind<B>(key).getOrNull();
+  B? tryGet<B extends Object>({String? key, ParamTransform? transform}) {
+    return getBind<B>(key: key).getOrNull();
   }
 
   @override
