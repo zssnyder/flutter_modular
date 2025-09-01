@@ -136,7 +136,7 @@ class ModularBase implements IModularBase {
 
   @override
   B get<B extends Object>({String? key, ParamTransform? transform}) {
-    return getBind<B>(key: key).getOrThrow();
+    return getBind<B>(key: key, transform: transform).getOrThrow();
   }
 
   @override
